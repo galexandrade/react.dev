@@ -18,866 +18,246 @@ React and many other UI libraries model UI as a tree. Thinking of your React app
 
 </YouWillLearn>
 
-## Your UI as a tree {/*your-ui-as-a -tree*/}
-
-
-Browsers use many tree structures to model UI. The represents HTML elements, the  does the same for CSS. There's even an !
+## Your UI as a tree {/*your-ui-as-a-tree*/}
 
 Trees are a relationship model between items and UI is often represented using tree structures. For example on browsers, the [DOM](https://developer.mozilla.org/docs/Web/API/Document_Object_Model/Introduction) represents HTML elements while the [CSSOM](https://developer.mozilla.org/docs/Web/API/CSS_Object_Model) does the same for CSS. Similar for mobile, platform views relate to one another in a tree format. There’s even an [Accessibility tree](https://developer.mozilla.org/docs/Glossary/Accessibility_tree)!
-
-<DiagramGroup>
 
 <Diagram name="preserving_state_dom_tree" height={193} width={864} alt="Diagram with three sections arranged horizontally. In the first section, there are three rectangles stacked vertically, with labels 'Component A', 'Component B', and 'Component C'. Transitioning to the next pane is an arrow with the React logo on top labeled 'React'. The middle section contains a tree of components, with the root labeled 'A' and two children labeled 'B' and 'C'. The next section is again transitioned using an arrow with the React logo on top labeled 'React'. The third and final section is a wireframe of a browser, containing a tree of 8 nodes, which has only a subset highlighted (indicating the subtree from the middle section).">
 
 From components, React creates a UI tree which React DOM uses to render the DOM
-
 </Diagram>
-
-</DiagramGroup>
 
 React also uses tree structures to manage and model the relationship between components in a React app. These trees are useful tools to understand how data flows through a React app and how to optimize rendering and app size.
 
-In computer science (and especially the world of functional programming), [a pure function](https://wikipedia.org/wiki/Pure_function) is a function with the following characteristics:
+## The Render Tree {/*the-render-tree*/}
 
-* **It minds its own business.** It does not change any objects or variables that existed before it was called.
-* **Same inputs, same output.** Given the same inputs, a pure function should always return the same result.
+A major feature of components is the ability to compose components of other components. As we [nest components](/learn/your-first-component#nesting-and-organizing-components), we have the concept of parent and child components, where each parent component may itself be a child of another component. 
 
-You might already be familiar with one example of pure functions: formulas in math.
+When we render a React app, we can model this relationship in a tree, known as the render tree.
 
-Consider this math formula: <Math><MathI>y</MathI> = 2<MathI>x</MathI></Math>.
-
-If <Math><MathI>x</MathI> = 2</Math> then <Math><MathI>y</MathI> = 4</Math>. Always. 
-
-If <Math><MathI>x</MathI> = 3</Math> then <Math><MathI>y</MathI> = 6</Math>. Always. 
-
-If <Math><MathI>x</MathI> = 3</Math>, <MathI>y</MathI> won't sometimes be <Math>9</Math> or <Math>–1</Math> or <Math>2.5</Math> depending on the time of day or the state of the stock market. 
-
-If <Math><MathI>y</MathI> = 2<MathI>x</MathI></Math> and <Math><MathI>x</MathI> = 3</Math>, <MathI>y</MathI> will _always_ be <Math>6</Math>. 
-
-If we made this into a JavaScript function, it would look like this:
-
-```js
-function double(number) {
-  return 2 * number;
-}
-```
-
-In the above example, `double` is a **pure function.** If you pass it `3`, it will return `6`. Always.
-
-React is designed around this concept. **React assumes that every component you write is a pure function.** This means that React components you write must always return the same JSX given the same inputs:
+Here is a React app that renders a random greeting. 
 
 <Sandpack>
 
 ```js App.js
-function Recipe({ drinkers }) {
-  return (
-    <ol>    
-      <li>Boil {drinkers} cups of water.</li>
-      <li>Add {drinkers} spoons of tea and {0.5 * drinkers} spoons of spice.</li>
-      <li>Add {0.5 * drinkers} cups of milk to boil and sugar to taste.</li>
-    </ol>
-  );
-}
+import Title from './Title';
+import Greeting from './Greeting';
+import Copyright from './Copyright';
 
 export default function App() {
   return (
-    <section>
-      <h1>Spiced Chai Recipe</h1>
-      <h2>For two</h2>
-      <Recipe drinkers={2} />
-      <h2>For a gathering</h2>
-      <Recipe drinkers={4} />
-    </section>
+    <>
+      <Title text="Generate a random greeting" />
+      <Greeting>
+        <Copyright year={2004} />
+      </Greeting>
+    </>
   );
+}
+
+```
+
+```js Title.js
+export default function Title({fancy, text}) {
+    return <h1 className={fancy ? 'fancy' : ''}>{text}</h1>;
 }
 ```
 
-</Sandpack>
+```js Greeting.js
+import * as React from 'react';
+import greetings from './greetings';
+import Title from './Title';
 
-When you pass `drinkers={2}` to `Recipe`, it will return JSX containing `2 cups of water`. Always. 
-
-If you pass `drinkers={4}`, it will return JSX containing `4 cups of water`. Always.
-
-Just like a math formula. 
-
-You could think of your components as recipes: if you follow them and don't introduce new ingredients during the cooking process, you will get the same dish every time. That "dish" is the JSX that the component serves to React to [render.](/learn/render-and-commit)
-
-<Illustration src="/images/docs/illustrations/i_puritea-recipe.png" alt="A tea recipe for x people: take x cups of water, add x spoons of tea and 0.5x spoons of spices, and 0.5x cups of milk" />
-
-## Side Effects: (un)intended consequences {/*side-effects-unintended-consequences*/}
-
-React's rendering process must always be pure. Components should only *return* their JSX, and not *change* any objects or variables that existed before rendering—that would make them impure!
-
-Here is a component that breaks this rule:
-
-<Sandpack>
-
-```js
-let guest = 0;
-
-function Cup() {
-  // Bad: changing a preexisting variable!
-  guest = guest + 1;
-  return <h2>Tea cup for guest #{guest}</h2>;
+function randIndex(max) {
+  return Math.floor(Math.random() * max);
 }
 
-export default function TeaSet() {
+export default function Greeting({children}) {
+  const [index, setIndex] = React.useState(randIndex(greetings.length));
+  const greeting = greetings[index];
+  const nextGreeting = () => setIndex(randIndex(greetings.length));
   return (
     <>
-      <Cup />
-      <Cup />
-      <Cup />
+      <Title fancy text={greeting} />
+      <button onClick={nextGreeting}>🎲</button>
+      {children}
     </>
   );
 }
 ```
 
-</Sandpack>
-
-This component is reading and writing a `guest` variable declared outside of it. This means that **calling this component multiple times will produce different JSX!** And what's more, if _other_ components read `guest`, they will produce different JSX, too, depending on when they were rendered! That's not predictable.
-
-Going back to our formula <Math><MathI>y</MathI> = 2<MathI>x</MathI></Math>, now even if <Math><MathI>x</MathI> = 2</Math>, we cannot trust that <Math><MathI>y</MathI> = 4</Math>. Our tests could fail, our users would be baffled, planes would fall out of the sky—you can see how this would lead to confusing bugs!
-
-You can fix this component by [passing `guest` as a prop instead](/learn/passing-props-to-a-component):
-
-<Sandpack>
-
-```js
-function Cup({ guest }) {
-  return <h2>Tea cup for guest #{guest}</h2>;
+```js Copyright.js
+export default function Copyright({year}) {
+  return <p>©️ {year}</p>;
 }
+```
 
-export default function TeaSet() {
-  return (
-    <>
-      <Cup guest={1} />
-      <Cup guest={2} />
-      <Cup guest={3} />
-    </>
-  );
+```js greetings.js
+export default ['Howdy!', 'Hello2!', 'Hello3!', 'Hello3!', 'Hello4!'];
+```
+
+```css
+.fancy {
+    font-style: italic;
+    color: blue;
 }
 ```
 
 </Sandpack>
 
-Now your component is pure, as the JSX it returns only depends on the `guest` prop.
+<Diagram name="render_tree" height={300} width={509} alt="Tree graph with 5 nodes. The root of the tree is App, with two arrows extending from it to nodes Greeting and Title. The arrows are labelled renders. Greeting node also has two arrows extended pointing down to nodes Title and Copyright.">
 
-In general, you should not expect your components to be rendered in any particular order. It doesn't matter if you call <Math><MathI>y</MathI> = 2<MathI>x</MathI></Math> before or after <Math><MathI>y</MathI> = 5<MathI>x</MathI></Math>: both formulas will resolve independently of each other. In the same way, each component should only "think for itself", and not attempt to coordinate with or depend upon others during rendering. Rendering is like a school exam: each component should calculate JSX on their own!
+React creates a UI tree made of components rendered, known as a render tree.
+
+</Diagram>
+
+From the example app, we can construct the above render tree. Each node in the tree represents a component and the root node is the [root component](/learn/importing-and-exporting-components#the-root-component-file). In this case, the root component is `App` and it is the first component React renders as it works down the children. Every arrow in the tree points from a parent component to a child component.
+
+We often refer to the components near the root of the tree as top-level components. They are ancestors and have a lot of descendent components. Components that have no children are referred to as "leaves". 
 
 <DeepDive>
-
-#### Detecting impure calculations with StrictMode {/*detecting-impure-calculations-with-strict-mode*/}
-
-Although you might not have used them all yet, in React there are three kinds of inputs that you can read while rendering: [props](/learn/passing-props-to-a-component), [state](/learn/state-a-components-memory), and [context.](/learn/passing-data-deeply-with-context) You should always treat these inputs as read-only.
-
-When you want to *change* something in response to user input, you should [set state](/learn/state-a-components-memory) instead of writing to a variable. You should never change preexisting variables or objects while your component is rendering.
-
-React offers a "Strict Mode" in which it calls each component's function twice during development. **By calling the component functions twice, Strict Mode helps find components that break these rules.**
-
-Notice how the original example displayed "Guest #2", "Guest #4", and "Guest #6" instead of "Guest #1", "Guest #2", and "Guest #3". The original function was impure, so calling it twice broke it. But the fixed pure version works even if the function is called twice every time. **Pure functions only calculate, so calling them twice won't change anything**--just like calling `double(2)` twice doesn't change what's returned, and solving <Math><MathI>y</MathI> = 2<MathI>x</MathI></Math> twice doesn't change what <MathI>y</MathI> is. Same inputs, same outputs. Always.
-
-Strict Mode has no effect in production, so it won't slow down the app for your users. To opt into Strict Mode, you can wrap your root component into `<React.StrictMode>`. Some frameworks do this by default.
-
+#### Where are the HTML elements in the render tree? {/*where-are-the-html-elements-in-the-render-tree*/}
+TODO
+You'll notice that HTML elements, are not part of the tree. 
 </DeepDive>
 
-### Local mutation: Your component's little secret {/*local-mutation-your-components-little-secret*/}
+A render tree represents a single render pass of a React application. With [conditional rendering](/learn/conditional-rendering), a parent component may render different children depending on the data passed.
 
-In the above example, the problem was that the component changed a *preexisting* variable while rendering. This is often called a **"mutation"** to make it sound a bit scarier. Pure functions don't mutate variables outside of the function's scope or objects that were created before the call—that makes them impure!
-
-However, **it's completely fine to change variables and objects that you've *just* created while rendering.** In this example, you create an `[]` array, assign it to a `cups` variable, and then `push` a dozen cups into it:
+We can update the Greeting app to conditionally render either an image or a text greeting.
 
 <Sandpack>
 
-```js
-function Cup({ guest }) {
-  return <h2>Tea cup for guest #{guest}</h2>;
+```js App.js
+import { Title } from './GreetingMedia';
+import Greeting from './Greeting';
+import Copyright from './Copyright';
+
+export default function App() {
+  return (
+    <>
+      <Title text="Generate a random greeting" />
+      <Greeting>
+        <Copyright year={2004} />
+      </Greeting>
+    </>
+  );
 }
 
-export default function TeaGathering() {
-  let cups = [];
-  for (let i = 1; i <= 12; i++) {
-    cups.push(<Cup key={i} guest={i} />);
-  }
-  return cups;
+```
+
+```js GreetingMedia.js
+export function Title({fancy, text}) {
+  return <h1 className={fancy ? 'fancy' : ''}>{text}</h1>;
+}
+
+export function Image({src}) {
+  return <img src={src} />;
 }
 ```
 
+```js Greeting.js
+import * as React from 'react';
+import greetings from './greetings';
+import {Title, Image} from './GreetingMedia';
+
+function randIndex(max) {
+  return Math.floor(Math.random() * max);
+}
+
+export default function Greeting({children}) {
+  const [index, setIndex] = React.useState(randIndex(greetings.length));
+  const greeting = greetings[index];
+  const nextGreeting = () => setIndex(randIndex(greetings.length));
+  return (
+    <>
+      {greeting.type === 'text' ? (
+        <Title fancy text={greeting.value} />
+      ) : (
+        <Image src={greeting.value} />
+      )}
+      <button onClick={nextGreeting}>🎲</button>
+      {children}
+    </>
+  );
+}
+
+```
+
+```js Copyright.js
+export default function Copyright({year}) {
+  return <p>©️ {year}</p>;
+}
+```
+
+```js greetings.js
+export default [
+    {type: 'text', value: 'Howdy!'},
+    {type: 'text', value: 'Hello!'},
+    {type: 'image', value: 'https://i.imgur.com/yXOvdOSs.jpg'},
+    {type: 'image', value: 'https://i.imgur.com/yXOvdOSs.jpg'},
+    {type: 'text', value: 'Howdy!'},
+];
+```
+
+```css
+.fancy {
+    font-style: italic;
+    color: blue;
+}
+```
 </Sandpack>
 
-If the `cups` variable or the `[]` array were created outside the `TeaGathering` function, this would be a huge problem! You would be changing a *preexisting* object by pushing items into that array.
+<Diagram name="conditional_render_tree" height={300} width={522} alt="TODO.">
 
-However, it's fine because you've created them *during the same render*, inside `TeaGathering`. No code outside of `TeaGathering` will ever know that this happened. This is called **"local mutation"**—it's like your component's little secret.
+With conditional rendering, across different renders, the render tree may render different components.
 
-## Where you _can_ cause side effects {/*where-you-_can_-cause-side-effects*/}
+</Diagram>
 
-While functional programming relies heavily on purity, at some point, somewhere, _something_ has to change. That's kind of the point of programming! These changes—updating the screen, starting an animation, changing the data—are called **side effects.** They're things that happen _"on the side"_, not during rendering.
+In this example, depending on what `greeting.type` is, we may render `<Title>` or `<Image>`. The render tree may be different for each render pass.
 
-In React, **side effects usually belong inside [event handlers.](/learn/responding-to-events)** Event handlers are functions that React runs when you perform some action—for example, when you click a button. Even though event handlers are defined *inside* your component, they don't run *during* rendering! **So event handlers don't need to be pure.**
+Although render trees may differ across render pases, these trees are generally helpful for identifying what the top-level components are in a React app. Top-level components affect the rendering performance of all the components beneath them and often contain the most complexity.
 
-If you've exhausted all other options and can't find the right event handler for your side effect, you can still attach it to your returned JSX with a [`useEffect`](/reference/react/useEffect) call in your component. This tells React to execute it later, after rendering, when side effects are allowed. **However, this approach should be your last resort.**
+## The Module Dependency Tree {/*the-module-dependency-tree*/}
 
-When possible, try to express your logic with rendering alone. You'll be surprised how far this can take you!
+Another relationship in a React app that can be modeled with a tree are an app's module dependencies. As we [break up our components](/learn/importing-and-exporting-components#exporting-and-importing-a-component) and logic into separate files, we create [JS modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules) where we may export components, functions or constants. 
+
+Each node in a module dependency tree is a module and each branch represents an `import` statement in that module.
+
+If we take the previous Greeting app, we can build a module dependency tree, or dependency tree for short. 
+
+<Diagram name="module_dependency_tree" height={400} width={761} alt="TODO.">
+
+The module dependency tree for the Greetings app
+
+</Diagram>
+
+The root node of the tree is the root module, also known as the entrypoint file. It often is the module that contains the root component.
+
+Comparing to the render tree of the same app, there are similar structures but some notable differences:
+
+* Tree nodes are modules vs. components. Often, a module exports a single component but in this case `GreetingMedia.js` exports both `Title` and `Image`.
+* Non-component modules are also represented in this tree. The render tree only encapsulates components.
+* `Copyright.js` appears under `App.js` but in the render tree, `Copyright`, the component, appears as a child of `Greeting`. This is because `Greeting` accepts JSX as children. 
+
+Dependency trees are useful to determine what modules are necessary to run your React app. When building a React app for production, there is typically a build step that will bundle all the necessary JavaScript to ship to the client. The tool responsible for this is called a bundler, and bundlers will use the dependency tree to determine what modules should be included.
+
+As your app grows, often the bundle size does too. Large bundle sizes are expensive for a client to download and run so getting a sense of your app's dependency tree may help with debugging the issue.
 
 <DeepDive>
+#### Conditional Dependencies {/*conditional-dependencies*/}
 
-#### Why does React care about purity? {/*why-does-react-care-about-purity*/}
-
-Writing pure functions takes some habit and discipline. But it also unlocks marvelous opportunities:
-
-* Your components could run in a different environment—for example, on the server! Since they return the same result for the same inputs, one component can serve many user requests.
-* You can improve performance by [skipping rendering](/reference/react/memo) components whose inputs have not changed. This is safe because pure functions always return the same results, so they are safe to cache.
-* If some data changes in the middle of rendering a deep component tree, React can restart rendering without wasting time to finish the outdated render. Purity makes it safe to stop calculating at any time.
-
-Every new React feature we're building takes advantage of purity. From data fetching to animations to performance, keeping components pure unlocks the power of the React paradigm.
-
+Similar to conditional rendering, there may be conditional imports.
+... TODO
 </DeepDive>
 
 <Recap>
 
-* A component must be pure, meaning:
-  * **It minds its own business.** It should not change any objects or variables that existed before rendering.
-  * **Same inputs, same output.** Given the same inputs, a component should always return the same JSX. 
-* Rendering can happen at any time, so components should not depend on each others' rendering sequence.
-* You should not mutate any of the inputs that your components use for rendering. That includes props, state, and context. To update the screen, ["set" state](/learn/state-a-components-memory) instead of mutating preexisting objects.
-* Strive to express your component's logic in the JSX you return. When you need to "change things", you'll usually want to do it in an event handler. As a last resort, you can `useEffect`.
-* Writing pure functions takes a bit of practice, but it unlocks the power of React's paradigm.
+* Trees are a common way to represent the relationship between entities. They are often used to model UI.
+* Render trees represent the nested relationship between React components across a single render.
+* With conditional rendering, the render tree may change across different renders. With different prop values, components may render different children components. 
+* Render trees help identify what the top-level components are. Top-level components affect the rendering performance of all components beneath them. Identifying them is useful for debugging slow renders.
+* Dependency trees represent the module dependencies in a React app.
+* Dependency trees are used by build tools to bundle the necessary code to ship an app.
+* Dependency trees are useful for debugging large bundle sizes and opportunities for optimizing what code is bundled.
 
 </Recap>
-
-
-  
-<Challenges>
-
-#### Fix a broken clock {/*fix-a-broken-clock*/}
-
-This component tries to set the `<h1>`'s CSS class to `"night"` during the time from midnight to six hours in the morning, and `"day"` at all other times. However, it doesn't work. Can you fix this component?
-
-You can verify whether your solution works by temporarily changing the computer's timezone. When the current time is between midnight and six in the morning, the clock should have inverted colors!
-
-<Hint>
-
-Rendering is a *calculation*, it shouldn't try to "do" things. Can you express the same idea differently?
-
-</Hint>
-
-<Sandpack>
-
-```js Clock.js active
-export default function Clock({ time }) {
-  let hours = time.getHours();
-  if (hours >= 0 && hours <= 6) {
-    document.getElementById('time').className = 'night';
-  } else {
-    document.getElementById('time').className = 'day';
-  }
-  return (
-    <h1 id="time">
-      {time.toLocaleTimeString()}
-    </h1>
-  );
-}
-```
-
-```js App.js hidden
-import { useState, useEffect } from 'react';
-import Clock from './Clock.js';
-
-function useTime() {
-  const [time, setTime] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-  return time;
-}
-
-export default function App() {
-  const time = useTime();
-  return (
-    <Clock time={time} />
-  );
-}
-```
-
-```css
-body > * {
-  width: 100%;
-  height: 100%;
-}
-.day {
-  background: #fff;
-  color: #222;
-}
-.night {
-  background: #222;
-  color: #fff;
-}
-```
-
-</Sandpack>
-
-<Solution>
-
-You can fix this component by calculating the `className` and including it in the render output:
-
-<Sandpack>
-
-```js Clock.js active
-export default function Clock({ time }) {
-  let hours = time.getHours();
-  let className;
-  if (hours >= 0 && hours <= 6) {
-    className = 'night';
-  } else {
-    className = 'day';
-  }
-  return (
-    <h1 className={className}>
-      {time.toLocaleTimeString()}
-    </h1>
-  );
-}
-```
-
-```js App.js hidden
-import { useState, useEffect } from 'react';
-import Clock from './Clock.js';
-
-function useTime() {
-  const [time, setTime] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-  return time;
-}
-
-export default function App() {
-  const time = useTime();
-  return (
-    <Clock time={time} />
-  );
-}
-```
-
-```css
-body > * {
-  width: 100%;
-  height: 100%;
-}
-.day {
-  background: #fff;
-  color: #222;
-}
-.night {
-  background: #222;
-  color: #fff;
-}
-```
-
-</Sandpack>
-
-In this example, the side effect (modifying the DOM) was not necessary at all. You only needed to return JSX.
-
-</Solution>
-
-#### Fix a broken profile {/*fix-a-broken-profile*/}
-
-Two `Profile` components are rendered side by side with different data. Press "Collapse" on the first profile, and then "Expand" it. You'll notice that both profiles now show the same person. This is a bug.
-
-Find the cause of the bug and fix it.
-
-<Hint>
-
-The buggy code is in `Profile.js`. Make sure you read it all from top to bottom!
-
-</Hint>
-
-<Sandpack>
-
-```js Profile.js
-import Panel from './Panel.js';
-import { getImageUrl } from './utils.js';
-
-let currentPerson;
-
-export default function Profile({ person }) {
-  currentPerson = person;
-  return (
-    <Panel>
-      <Header />
-      <Avatar />
-    </Panel>
-  )
-}
-
-function Header() {
-  return <h1>{currentPerson.name}</h1>;
-}
-
-function Avatar() {
-  return (
-    <img
-      className="avatar"
-      src={getImageUrl(currentPerson)}
-      alt={currentPerson.name}
-      width={50}
-      height={50}
-    />
-  );
-}
-```
-
-```js Panel.js hidden
-import { useState } from 'react';
-
-export default function Panel({ children }) {
-  const [open, setOpen] = useState(true);
-  return (
-    <section className="panel">
-      <button onClick={() => setOpen(!open)}>
-        {open ? 'Collapse' : 'Expand'}
-      </button>
-      {open && children}
-    </section>
-  );
-}
-```
-
-```js App.js
-import Profile from './Profile.js';
-
-export default function App() {
-  return (
-    <>
-      <Profile person={{
-        imageId: 'lrWQx8l',
-        name: 'Subrahmanyan Chandrasekhar',
-      }} />
-      <Profile person={{
-        imageId: 'MK3eW3A',
-        name: 'Creola Katherine Johnson',
-      }} />
-    </>
-  )
-}
-```
-
-```js utils.js hidden
-export function getImageUrl(person, size = 's') {
-  return (
-    'https://i.imgur.com/' +
-    person.imageId +
-    size +
-    '.jpg'
-  );
-}
-```
-
-```css
-.avatar { margin: 5px; border-radius: 50%; }
-.panel {
-  border: 1px solid #aaa;
-  border-radius: 6px;
-  margin-top: 20px;
-  padding: 10px;
-  width: 200px;
-}
-h1 { margin: 5px; font-size: 18px; }
-```
-
-</Sandpack>
-
-<Solution>
-
-The problem is that the `Profile` component writes to a preexisting variable called `currentPerson`, and the `Header` and `Avatar` components read from it. This makes *all three of them* impure and difficult to predict.
-
-To fix the bug, remove the `currentPerson` variable. Instead, pass all information from `Profile` to `Header` and `Avatar` via props. You'll need to add a `person` prop to both components and pass it all the way down.
-
-<Sandpack>
-
-```js Profile.js active
-import Panel from './Panel.js';
-import { getImageUrl } from './utils.js';
-
-export default function Profile({ person }) {
-  return (
-    <Panel>
-      <Header person={person} />
-      <Avatar person={person} />
-    </Panel>
-  )
-}
-
-function Header({ person }) {
-  return <h1>{person.name}</h1>;
-}
-
-function Avatar({ person }) {
-  return (
-    <img
-      className="avatar"
-      src={getImageUrl(person)}
-      alt={person.name}
-      width={50}
-      height={50}
-    />
-  );
-}
-```
-
-```js Panel.js hidden
-import { useState } from 'react';
-
-export default function Panel({ children }) {
-  const [open, setOpen] = useState(true);
-  return (
-    <section className="panel">
-      <button onClick={() => setOpen(!open)}>
-        {open ? 'Collapse' : 'Expand'}
-      </button>
-      {open && children}
-    </section>
-  );
-}
-```
-
-```js App.js
-import Profile from './Profile.js';
-
-export default function App() {
-  return (
-    <>
-      <Profile person={{
-        imageId: 'lrWQx8l',
-        name: 'Subrahmanyan Chandrasekhar',
-      }} />
-      <Profile person={{
-        imageId: 'MK3eW3A',
-        name: 'Creola Katherine Johnson',
-      }} />
-    </>
-  );
-}
-```
-
-```js utils.js hidden
-export function getImageUrl(person, size = 's') {
-  return (
-    'https://i.imgur.com/' +
-    person.imageId +
-    size +
-    '.jpg'
-  );
-}
-```
-
-```css
-.avatar { margin: 5px; border-radius: 50%; }
-.panel {
-  border: 1px solid #aaa;
-  border-radius: 6px;
-  margin-top: 20px;
-  padding: 10px;
-  width: 200px;
-}
-h1 { margin: 5px; font-size: 18px; }
-```
-
-</Sandpack>
-
-Remember that React does not guarantee that component functions will execute in any particular order, so you can't communicate between them by setting variables. All communication must happen through props.
-
-</Solution>
-
-#### Fix a broken story tray {/*fix-a-broken-story-tray*/}
-
-The CEO of your company is asking you to add "stories" to your online clock app, and you can't say no. You've written a `StoryTray` component that accepts a list of `stories`, followed by a "Create Story" placeholder.
-
-You implemented the "Create Story" placeholder by pushing one more fake story at the end of the `stories` array that you receive as a prop. But for some reason, "Create Story" appears more than once. Fix the issue.
-
-<Sandpack>
-
-```js StoryTray.js active
-export default function StoryTray({ stories }) {
-  stories.push({
-    id: 'create',
-    label: 'Create Story'
-  });
-
-  return (
-    <ul>
-      {stories.map(story => (
-        <li key={story.id}>
-          {story.label}
-        </li>
-      ))}
-    </ul>
-  );
-}
-```
-
-```js App.js hidden
-import { useState, useEffect } from 'react';
-import StoryTray from './StoryTray.js';
-
-let initialStories = [
-  {id: 0, label: "Ankit's Story" },
-  {id: 1, label: "Taylor's Story" },
-];
-
-export default function App() {
-  let [stories, setStories] = useState([...initialStories])
-  let time = useTime();
-
-  // HACK: Prevent the memory from growing forever while you read docs.
-  // We're breaking our own rules here.
-  if (stories.length > 100) {
-    stories.length = 100;
-  }
-
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        textAlign: 'center',
-      }}
-    >
-      <h2>It is {time.toLocaleTimeString()} now.</h2>
-      <StoryTray stories={stories} />
-    </div>
-  );
-}
-
-function useTime() {
-  const [time, setTime] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-  return time;
-}
-```
-
-```css
-ul {
-  margin: 0;
-  list-style-type: none;
-}
-
-li {
-  border: 1px solid #aaa;
-  border-radius: 6px;
-  float: left;
-  margin: 5px;
-  margin-bottom: 20px;
-  padding: 5px;
-  width: 70px;
-  height: 100px;
-}
-```
-
-```js sandbox.config.json hidden
-{
-  "hardReloadOnChange": true
-}
-```
-
-</Sandpack>
-
-<Solution>
-
-Notice how whenever the clock updates, "Create Story" is added *twice*. This serves as a hint that we have a mutation during rendering--Strict Mode calls components twice to make these issues more noticeable.
-
-`StoryTray` function is not pure. By calling `push` on the received `stories` array (a prop!), it is mutating an object that was created *before* `StoryTray` started rendering. This makes it buggy and very difficult to predict.
-
-The simplest fix is to not touch the array at all, and render "Create Story" separately:
-
-<Sandpack>
-
-```js StoryTray.js active
-export default function StoryTray({ stories }) {
-  return (
-    <ul>
-      {stories.map(story => (
-        <li key={story.id}>
-          {story.label}
-        </li>
-      ))}
-      <li>Create Story</li>
-    </ul>
-  );
-}
-```
-
-```js App.js hidden
-import { useState, useEffect } from 'react';
-import StoryTray from './StoryTray.js';
-
-let initialStories = [
-  {id: 0, label: "Ankit's Story" },
-  {id: 1, label: "Taylor's Story" },
-];
-
-export default function App() {
-  let [stories, setStories] = useState([...initialStories])
-  let time = useTime();
-
-  // HACK: Prevent the memory from growing forever while you read docs.
-  // We're breaking our own rules here.
-  if (stories.length > 100) {
-    stories.length = 100;
-  }
-
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        textAlign: 'center',
-      }}
-    >
-      <h2>It is {time.toLocaleTimeString()} now.</h2>
-      <StoryTray stories={stories} />
-    </div>
-  );
-}
-
-function useTime() {
-  const [time, setTime] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-  return time;
-}
-```
-
-```css
-ul {
-  margin: 0;
-  list-style-type: none;
-}
-
-li {
-  border: 1px solid #aaa;
-  border-radius: 6px;
-  float: left;
-  margin: 5px;
-  margin-bottom: 20px;
-  padding: 5px;
-  width: 70px;
-  height: 100px;
-}
-```
-
-</Sandpack>
-
-Alternatively, you could create a _new_ array (by copying the existing one) before you push an item into it:
-
-<Sandpack>
-
-```js StoryTray.js active
-export default function StoryTray({ stories }) {
-  // Copy the array!
-  let storiesToDisplay = stories.slice();
-
-  // Does not affect the original array:
-  storiesToDisplay.push({
-    id: 'create',
-    label: 'Create Story'
-  });
-
-  return (
-    <ul>
-      {storiesToDisplay.map(story => (
-        <li key={story.id}>
-          {story.label}
-        </li>
-      ))}
-    </ul>
-  );
-}
-```
-
-```js App.js hidden
-import { useState, useEffect } from 'react';
-import StoryTray from './StoryTray.js';
-
-let initialStories = [
-  {id: 0, label: "Ankit's Story" },
-  {id: 1, label: "Taylor's Story" },
-];
-
-export default function App() {
-  let [stories, setStories] = useState([...initialStories])
-  let time = useTime();
-
-  // HACK: Prevent the memory from growing forever while you read docs.
-  // We're breaking our own rules here.
-  if (stories.length > 100) {
-    stories.length = 100;
-  }
-
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        textAlign: 'center',
-      }}
-    >
-      <h2>It is {time.toLocaleTimeString()} now.</h2>
-      <StoryTray stories={stories} />
-    </div>
-  );
-}
-
-function useTime() {
-  const [time, setTime] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-  return time;
-}
-```
-
-```css
-ul {
-  margin: 0;
-  list-style-type: none;
-}
-
-li {
-  border: 1px solid #aaa;
-  border-radius: 6px;
-  float: left;
-  margin: 5px;
-  margin-bottom: 20px;
-  padding: 5px;
-  width: 70px;
-  height: 100px;
-}
-```
-
-</Sandpack>
-
-This keeps your mutation local and your rendering function pure. However, you still need to be careful: for example, if you tried to change any of the array's existing items, you'd have to clone those items too.
-
-It is useful to remember which operations on arrays mutate them, and which don't. For example, `push`, `pop`, `reverse`, and `sort` will mutate the original array, but `slice`, `filter`, and `map` will create a new one.
-
-</Solution>
-
-</Challenges>
