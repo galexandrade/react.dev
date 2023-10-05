@@ -4,16 +4,16 @@ title: Understanding your UI as a Tree
 
 <Intro>
 
-Your React app is taking shape with many components being imported, exported and nested. Now to render your app, but how does React know where to start?
+Your React app is taking shape with many components being nested within each other. How does React keep track of your app's component structure?
 
-React and many other UI libraries model UI as a tree. Thinking of your React app as a tree is a helpful mental model to understand the relationship between your components and future concepts around performance and state management.
+React, and many other UI libraries, model UI as a tree. Thinking of your app as a tree is useful for understanding the relationship between components to debug future concepts like performance and state management.
 
 </Intro>
 
 <YouWillLearn>
 
-* How your UI is a tree
-* What a React Render tree is and what it is useful for
+* How React "sees" component structures
+* What a render tree is and what it is useful for
 * What a module dependency tree is and what it is useful for
 
 </YouWillLearn>
@@ -111,14 +111,22 @@ React creates a UI tree made of components rendered, known as a render tree.
 
 </Diagram>
 
-From the example app, we can construct the above render tree. Each node in the tree represents a component and the root node is the [root component](/learn/importing-and-exporting-components#the-root-component-file). In this case, the root component is `App` and it is the first component React renders as it works down the children. Every arrow in the tree points from a parent component to a child component.
+From the example app, we can construct the above render tree. Each node in the tree represents a component and the root node is the [root component](/learn/importing-and-exporting-components#the-root-component-file). In this case, the root component is `App` and it is the first component React renders. Each arrow in the tree points from a parent component to a child component.
 
-We often refer to the components near the root of the tree as top-level components. They are ancestors and have a lot of descendent components. Components that have no children are referred to as "leaves". 
+We often refer to the components near the root of the tree as "top-level components". They are ancestors and have a lot of descendent components. Components that have no children are referred to as "leaves". 
 
+
+[comment]: <> (I'm not sure if we should have this, I think I'm trying to get the point across that render trees are platform-agnostic tool for understanding your React app)
 <DeepDive>
-#### Where are the HTML elements in the render tree? {/*where-are-the-html-elements-in-the-render-tree*/}
-TODO
-You'll notice that HTML elements, are not part of the tree. 
+
+#### Where are the HTML tags in the render tree? {/*where-are-the-html-elements-in-the-render-tree*/}
+
+You'll notice in the above render tree, there is no mention of the HTML tags that each component renders. This is because the render tree is only composed of React [components](learn/your-first-component#components-ui-building-blocks). 
+
+React, as a UI framework, is platform agonistic. On react.dev, we showcase examples that render to the web, which uses HTML markup as its UI primitives. But a React app could just as likely render to a mobile or desktop platform, which may use different UI primitives like [UIView](https://developer.apple.com/documentation/uikit/uiview) or [Framework Element](https://learn.microsoft.com/en-us/dotnet/api/system.windows.frameworkelement?view=windowsdesktop-7.0).
+
+These platform UI primitives are not a part of React. React render trees can provide insight to our React app regardless of what platform your app renders to.
+
 </DeepDive>
 
 A render tree represents a single render pass of a React application. With [conditional rendering](/learn/conditional-rendering), a parent component may render different children depending on the data passed.
@@ -243,12 +251,7 @@ Dependency trees are useful to determine what modules are necessary to run your 
 
 As your app grows, often the bundle size does too. Large bundle sizes are expensive for a client to download and run so getting a sense of your app's dependency tree may help with debugging the issue.
 
-<DeepDive>
-#### Conditional Dependencies {/*conditional-dependencies*/}
-
-Similar to conditional rendering, there may be conditional imports.
-... TODO
-</DeepDive>
+[comment]: <> (perhaps we should also deep dive on conditional imports)
 
 <Recap>
 
@@ -261,3 +264,5 @@ Similar to conditional rendering, there may be conditional imports.
 * Dependency trees are useful for debugging large bundle sizes and opportunities for optimizing what code is bundled.
 
 </Recap>
+
+[TODO]: <> (Add challenges)
